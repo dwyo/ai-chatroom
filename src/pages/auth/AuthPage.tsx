@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { login, register } from '@/services/auth';
 import { useNavigate } from 'react-router-dom';
+import { createConnection } from "@/store/websocketSlice"
+import { setToken,setUser } from '@/store/user';
 
 type AuthMode = 'login' | 'register';
 
@@ -23,6 +26,7 @@ export const AuthPage = () => {
   });
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +46,7 @@ export const AuthPage = () => {
     if (!formData.password) {
       newErrors.password = '请输入密码';
     }
-    if (!formData.email) {
+    if (mode === 'register' && !formData.email) {
         newErrors.email = '请输入邮箱';
     }
     if (mode === 'register' && formData.password !== formData.confirmPassword) {
@@ -63,23 +67,29 @@ export const AuthPage = () => {
 
     try {
       if (mode === 'login') {
+        
         const response = await login({
           identity: formData.username,
           password: formData.password
         });
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
+        const data  = response.data;
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        console.log(response);
+        dispatch(setToken(data.token))
+        dispatch(setUser(data.user))
+        // 初始化 WebSocket 连接
+        // 在登录成功后初始化WebSocket连接
+        dispatch(createConnection())
         navigate('/');
       } else {
-        const response = await register({
+        await register({
           username: formData.username,
           email: formData.email,
           password: formData.password,
           confirmPassword: formData.confirmPassword
         });
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        navigate('/');
+        setMode('login');
       }
     } catch (error) {
       const errorMessage = error instanceof Error
@@ -89,7 +99,7 @@ export const AuthPage = () => {
         : '认证失败，请稍后重试';
       setErrors({
         ...newErrors,
-        username: errorMessage
+        username: errorMessage || ''
       });
     } finally {
       setIsLoading(false);
@@ -113,6 +123,7 @@ export const AuthPage = () => {
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               error={errors.username}
               placeholder="请输入用户名"
+              autoComplete="username"
             />
             {mode === 'register' && (
             <Input
@@ -131,6 +142,7 @@ export const AuthPage = () => {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               error={errors.password}
               placeholder="请输入密码"
+              autoComplete="password"
             />
             {mode === 'register' && (
               <Input
@@ -140,6 +152,7 @@ export const AuthPage = () => {
                 onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                 error={errors.confirmPassword}
                 placeholder="请再次输入密码"
+                autoComplete="new-password"
               />
             )}
           </div>

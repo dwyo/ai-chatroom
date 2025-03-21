@@ -3,10 +3,13 @@ import axios from 'axios';
 const API_URL = '/api';
 
 export interface AuthResponse {
-  token: string;
-  user: {
-    id: string;
-    username: string;
+  data: {
+    token: string;
+    user: {
+      id: string;
+      username: string;
+      email: string;
+    };    
   };
 }
 

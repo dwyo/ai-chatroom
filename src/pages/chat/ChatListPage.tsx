@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { EmojiPicker } from '@/components/ui/EmojiPicker';
+import { useSelector, useDispatch } from 'react-redux';
+import { getSocket, sendMessage, createConnection } from "@/store/websocketSlice";
+import { setToken, getUser, setUser } from "@/store/user";
 
 interface ChatItem {
   id: string;
@@ -17,8 +20,20 @@ interface FriendItem {
   avatar?: string;
   status: 'online' | 'offline';
 }
+// interface Msg {
+//   type: 'text' | 'image' | 'emoji';
+//   content: string;
+//   sender_id: string;
+//   target_id: string;
+//   is_group: boolean;
+//   created_at: string;
+// }
+
 
 export const ChatListPage = () => {
+  const dispatch = useDispatch();
+  const client = useSelector(getSocket);
+  const userinfo = useSelector(getUser)
   const [activeTab, setActiveTab] = useState<TabType>('messages');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -35,6 +50,14 @@ export const ChatListPage = () => {
     };
   }>>([]);
 
+  // 获取websocket的readState
+  if (!client) {
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') ?? '{}');
+    dispatch(setToken(token));
+    dispatch(setUser(user));
+    dispatch(createConnection())
+  }
 
   const [chatList] = useState<ChatItem[]>([
     {
@@ -215,7 +238,7 @@ export const ChatListPage = () => {
             </div>
         ) : (
             messages.map((message) => {
-            const isCurrentUser = message.sender.id === 'user';
+            const isCurrentUser = message.sender.id === userinfo?.id;
             return (
                 <div key={message.id} className={`flex items-start ${isCurrentUser ? 'flex-row-reverse' : 'space-x-2'}`}>
                 <img
@@ -284,6 +307,17 @@ export const ChatListPage = () => {
                 const newMessage = textareaRef.current.value.trim();
                 const timestamp = new Date().toLocaleString('zh-CN');
                 const messageId = String(Date.now());
+
+                const msg = {
+                    type: 'text',
+                    content: newMessage,
+                    sender_id: userinfo?.id,
+                    target_id: 42,
+                    created_at: timestamp,
+                }
+              
+
+                dispatch(sendMessage(JSON.stringify(msg)))
                 
                 // 添加新消息到消息列表
                 setMessages(prevMessages => [
@@ -293,7 +327,7 @@ export const ChatListPage = () => {
                     content: newMessage,
                     timestamp: timestamp,
                     sender: {
-                        id: 'user',
+                        id: userinfo?.id,
                         name: '我',
                         avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user'
                     }
