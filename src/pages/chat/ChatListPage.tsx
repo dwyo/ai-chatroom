@@ -3,6 +3,7 @@ import { EmojiPicker } from '@/components/ui/EmojiPicker';
 import { useSelector, useDispatch } from 'react-redux';
 import { getSocket, sendMessage, createConnection } from "@/store/websocketSlice";
 import { setToken, getUser, setUser } from "@/store/user";
+import { setMessage } from "@/store/message";
 
 interface ChatItem {
   id: string;
@@ -57,6 +58,7 @@ export const ChatListPage = () => {
     dispatch(setToken(token));
     dispatch(setUser(user));
     dispatch(createConnection())
+    useSelector(getUser)
   }
 
   const [chatList] = useState<ChatItem[]>([
@@ -318,6 +320,14 @@ export const ChatListPage = () => {
               
 
                 dispatch(sendMessage(JSON.stringify(msg)))
+                dispatch(setMessage({
+                  target_id: 42,
+                  avatar: 42,
+                  name: 42,
+                  is_group: false,
+                  data: msg,
+                }))
+
                 
                 // 添加新消息到消息列表
                 setMessages(prevMessages => [
